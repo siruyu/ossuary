@@ -199,6 +199,7 @@ export default function ConfigNecromancer() {
   const [githubConnected, setGithubConnected] = useState(false);
   // Archive depth state
   const [archiveSize, setArchiveSize] = useState("0 KB");
+  const [isLoadingArchive, setIsLoadingArchive] = useState(false);
 
   // Fetch GitHub connection status
   const fetchGithubStatus = useCallback(async () => {
