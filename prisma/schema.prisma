@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -181,7 +181,7 @@ model LootedItem {
   repoOwner   String
   itemName    String
   itemPath    String
-  type        String   // "file" or "repo" (full zip)
+  type        String
   downloadedAt DateTime @default(now())
 
   user  User @relation(fields: [userId], references: [id], onDelete: Cascade)
