@@ -2,7 +2,6 @@
 
 A digital graveyard for failed software projects — where dead code goes to live forever.
 
-![Ossuary Banner](https://via.placeholder.com/800x200/1a1a1a/ossuary-yellow?text=OSSARY+-+Digital+Graveyard)
 
 ## The Concept
 
