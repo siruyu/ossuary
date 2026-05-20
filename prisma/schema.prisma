@@ -1,0 +1,190 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  password      String?
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  profile          NecromancerProfile?
+  buriedProjects   BuriedProject[]
+  lootedTreasures  UserTreasure[]
+  rituals          BurialRitual[]
+  notifications    Notification[]
+  lootedItems      LootedItem[]
+
+  accounts  Account[]
+  sessions  Session[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  accessToken  String?
+  refreshToken String?
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model NecromancerProfile {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  title           String   @default("APPRENTICE")
+  level           Int      @default(1)
+  rank            String   @default("NOVICE")
+  totalBuried     Int      @default(0)
+  lootedResources Int      @default(0)
+  bio             String?
+  masteryTags     String   @default("")
+  systemInsight   String?
+  systemWhispers  Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model BuriedProject {
+  id            String   @id @default(cuid())
+  userId        String
+  name          String
+  description   String
+  failureMode   String
+  nodeRef       String   @default("")
+  tags          String   @default("")
+  techStack     String   @default("")
+  stars         Int      @default(0)
+  forks         Int      @default(0)
+  lastCommit    String?
+  repoUrl       String?
+  imageUrl      String?
+  obituary      String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lootedModules LootableModule[]
+
+  @@index([userId])
+}
+
+model LootableModule {
+  id              String   @id @default(cuid())
+  buriedProjectId String
+  name            String
+  source          String
+  tags            String   @default("")
+  description     String
+  downloadCount   Int      @default(0)
+  extractCount    Int      @default(0)
+  respects        Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  buriedProject BuriedProject @relation(fields: [buriedProjectId], references: [id], onDelete: Cascade)
+  treasures     UserTreasure[]
+
+  @@index([buriedProjectId])
+}
+
+model UserTreasure {
+  id          String   @id @default(cuid())
+  userId      String
+  moduleId    String
+  name        String
+  source      String
+  tags        String   @default("")
+  description  String
+  extracted   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  user   User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  module LootableModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([moduleId])
+}
+
+model BurialRitual {
+  id                String   @id @default(cuid())
+  userId            String
+  repoId            String?
+  repoName          String
+  repoDescription   String?
+  repoLastCommit    String?
+  repoTags          String   @default("")
+  failureMode       String
+  obituary          String?
+  status            String   @default("COMPLETED")
+  createdAt         DateTime @default(now())
+
+  user  User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user  User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model LootedItem {
+  id          String   @id @default(cuid())
+  userId      String
+  repoName    String
+  repoOwner   String
+  itemName    String
+  itemPath    String
+  type        String   // "file" or "repo" (full zip)
+  downloadedAt DateTime @default(now())
+
+  user  User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
