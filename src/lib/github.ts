@@ -81,16 +81,6 @@ export interface SearchFailedReposParams {
   perPage?: number;
 }
 
-const CAUSE_TOPICS: Record<string, string[]> = {
-  MARKET_FIT: ["abandoned", "dead", "failed-project"],
-  COMPLEXITY: ["complex", "experimental", "complexity"],
-  LACK_OF_FUNDS: ["non-profit", "startup-failed"],
-  TECHNICAL_DEBT: ["deprecated", "legacy", "technical-debt"],
-  PASSION_FADED: ["dormant", "inactive", "hibernating"],
-  SCOPE_CREEP: ["unmaintained", "abandonon"],
-  TEAM_FRACTURE: ["fork-dead", "collaboration"],
-};
-
 export async function searchFailedRepos(
   params: SearchFailedReposParams,
   accessToken?: string
@@ -101,10 +91,6 @@ export async function searchFailedRepos(
   }
 
   const octokit = getOctokit(token);
-
-  const causeTerms = params.causeOfDeath && params.causeOfDeath !== "ALL"
-    ? CAUSE_TOPICS[params.causeOfDeath] || []
-    : ["abandoned", "dead", "deprecated", "legacy", "inactive", "dormant", "failed"];
 
   let searchQuery = `topic:abandoned`;
   if (params.query) {

@@ -193,8 +193,8 @@ export default function NecromancerPage() {
         const err = await res.json();
         alert("EXHUME_FAILED: " + (err.error || "Unknown error"));
       }
-    } catch (e) {
-      alert("EXHUME_FAILED: Network error");
+} catch {
+        alert("EXHUME_FAILED: Network error");
     }
   }, [userId, fetchBurials, fetchRituals]);
 
@@ -217,7 +217,7 @@ export default function NecromancerPage() {
         const err = await res.json();
         alert("SEVER_FAILED: " + (err.error || "Unknown error"));
       }
-    } catch (e) {
+} catch {
       alert("SEVER_FAILED: Network error");
     }
   }, [userId, fetchBurials]);

@@ -197,7 +197,7 @@ export default function RepositoryPage() {
           const err = await res.json().catch(() => ({}));
           alert("Loot failed: " + (err.error || "Unknown error"));
         }
-      } catch (e) {
+      } catch {
         alert("Loot failed: Network error");
       } finally {
         setLooting(null);

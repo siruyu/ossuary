@@ -151,7 +151,7 @@ async function findAndFetchReadme(owner: string, repo: string, token?: string): 
 
   if (response.ok) {
     const contents = await response.json();
-    const readmeFile = contents.find((c: any) => 
+    const readmeFile = contents.find((c: { name: string }) => 
       c.name.toLowerCase().startsWith("readme")
     );
     

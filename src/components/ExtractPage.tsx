@@ -70,18 +70,6 @@ function getFileIcon(name: string, isDir: boolean) {
   );
 }
 
-function isTextFile(name: string): boolean {
-  const ext = name.split(".").pop()?.toLowerCase();
-  return [
-    "md", "txt", "js", "jsx", "ts", "tsx", "py", "rb", "go", "rs", 
-    "json", "yml", "yaml", "toml", "html", "css", "scss", "sh", "bash", "zsh",
-    "c", "cpp", "h", "hpp", "java", "kt", "swift", "cs", "php",
-    "vue", "svelte", "tsx", "jsx", "tsx",
-    "lock", "prop", "gitignore", "env", "editorconfig", "prettierrc", "eslintrc",
-    "xml", "gradle", "properties"
-  ].includes(ext || "");
-}
-
 export default function ExtractPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -104,7 +92,7 @@ export default function ExtractPage() {
   const [viewMode, setViewMode] = useState<"readme" | "file">("readme");
   const [readmeContent, setReadmeContent] = useState<string | null>(null);
 
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const loggedIn = status === "authenticated";
 
   useEffect(() => {
@@ -142,7 +130,7 @@ export default function ExtractPage() {
         if (data.readme && !readmeContent) {
           setReadmeContent(data.readme);
         }
-      } catch (err) {
+      } catch {
         setError("Failed to load repository");
       } finally {
         setLoading(false);
