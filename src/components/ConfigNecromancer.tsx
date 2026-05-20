@@ -199,7 +199,6 @@ export default function ConfigNecromancer() {
   const [githubConnected, setGithubConnected] = useState(false);
   // Archive depth state
   const [archiveSize, setArchiveSize] = useState("0 KB");
-  const [isLoadingArchive, setIsLoadingArchive] = useState(false);
 
   // Fetch GitHub connection status
   const fetchGithubStatus = useCallback(async () => {
@@ -217,7 +216,6 @@ export default function ConfigNecromancer() {
   // Fetch archive depth (total size of buried repos)
   const fetchArchiveDepth = useCallback(async () => {
     if (!userId) return;
-    setIsLoadingArchive(true);
     try {
       const res = await fetch(`/api/burial/archive-size?userId=${encodeURIComponent(userId)}`);
       if (res.ok) {
@@ -228,8 +226,6 @@ export default function ConfigNecromancer() {
       }
     } catch {
       setArchiveSize("--");
-    } finally {
-      setIsLoadingArchive(false);
     }
   }, [userId]);
 
