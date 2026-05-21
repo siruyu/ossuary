@@ -10,19 +10,13 @@ export async function GET(request: Request) {
   
   const clientId = process.env.AUTH_GITHUB_ID || "Ov23lil7aQwoM2iP9kZN";
   
-  // Use NEXTAUTH_URL if available, otherwise fall back to VERCEL_URL (Vercel deployments), 
-  // otherwise use the request's host
-  let baseUrl: string;
-  if (process.env.NEXTAUTH_URL) {
-    baseUrl = process.env.NEXTAUTH_URL;
-  } else if (process.env.VERCEL_URL) {
-    baseUrl = `https://${process.env.VERCEL_URL}`;
-  } else {
-    const reqUrl = new URL(request.url);
-    baseUrl = `${reqUrl.protocol}//${reqUrl.host}`;
-  }
+  // Derive callback URL from the incoming request URL
+  // This ensures it matches exactly what GitHub will redirect back to
+  const reqUrl = new URL(request.url);
+  const callbackUrl = `${reqUrl.origin}/api/connect-github/callback`;
   
-  const callbackUrl = `${baseUrl}/api/connect-github/callback`;
+  console.log("[GitHub OAuth] Initiating auth. Callback URL:", callbackUrl);
+  
   const scopes = "repo read:user";
   const state = session.user.id;
   
