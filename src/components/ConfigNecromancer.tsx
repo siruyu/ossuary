@@ -265,7 +265,7 @@ export default function ConfigNecromancer() {
     let cancelled = false;
     async function fetchProfile() {
       try {
-        const res = await fetch(`/api/profile?userId=${encodeURIComponent(userId)}`, { credentials: "include" });
+        const res = await fetch(`/api/profile?userId=${encodeURIComponent(userId!)}`, { credentials: "include" });
         if (cancelled) return;
         if (res.ok) {
           const data: ProfileData = await res.json();
@@ -337,10 +337,6 @@ export default function ConfigNecromancer() {
     } catch (err) {
       console.error("Save error:", err);
       alert("SAVE_FAILED: Network error");
-    } finally {
-      setSaving(false);
-    }
-  }, [userId, name, title, bio, alerts.systemWhispers]);
     } finally {
       setSaving(false);
     }

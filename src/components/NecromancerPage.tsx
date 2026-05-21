@@ -242,7 +242,7 @@ export default function NecromancerPage() {
     async function fetchData() {
       try {
         // Fetch profile first
-        const profileRes = await fetch(`/api/profile?userId=${encodeURIComponent(userId)}`, { credentials: "include" });
+        const profileRes = await fetch(`/api/profile?userId=${encodeURIComponent(userId!)}`, { credentials: "include" });
         if (cancelled) return;
         if (profileRes.ok) {
           const profileData = await profileRes.json();
