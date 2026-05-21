@@ -44,30 +44,56 @@ export default function LoginPage() {
 
     setLoading(true);
     try {
-      const result = await signIn("credentials", {
-        email,
-        password,
-        name: isSignup ? name : undefined,
-        mode: isSignup ? "signup" : "login",
-        redirect: false,
-      });
+      if (isSignup) {
+        // Use dedicated register API for signup
+        const res = await fetch("/api/auth/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password, name }),
+        });
 
-      console.log("[Login] signIn result:", JSON.stringify(result));
+        const data = await res.json();
 
-      if (result?.error) {
-        if (isSignup) {
-          setError("RECORD_EXISTS. Access denied for duplicate identity.");
+        if (!res.ok) {
+          if (res.status === 409) {
+            setError("RECORD_EXISTS. Access denied for duplicate identity.");
+          } else {
+            setError("REGISTRATION_FAILED: " + (data.error || "Unknown error"));
+          }
         } else {
-          setError("AUTH_FAILED. Invalid credentials.");
+          // Signup succeeded, now log in
+          const loginResult = await signIn("credentials", {
+            email,
+            password,
+            redirect: false,
+          });
+
+          if (loginResult?.ok) {
+            router.push("/");
+            router.refresh();
+          } else {
+            setError("ACCOUNT_CREATED but login failed. Please try logging in.");
+          }
         }
-      } else if (result?.ok) {
-        router.push("/");
-        router.refresh();
       } else {
-        setError("CONNECTION_REFUSED. Session initialization failed.");
+        // Login only
+        const result = await signIn("credentials", {
+          email,
+          password,
+          redirect: false,
+        });
+
+        if (result?.error) {
+          setError("AUTH_FAILED. Invalid credentials.");
+        } else if (result?.ok) {
+          router.push("/");
+          router.refresh();
+        } else {
+          setError("CONNECTION_REFUSED. Session initialization failed.");
+        }
       }
     } catch (err) {
-      console.error("[Login] signIn exception:", err);
+      console.error("[Login] Error:", err);
       setError("CONNECTION_REFUSED. Session initialization failed.");
     } finally {
       setLoading(false);

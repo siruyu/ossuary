@@ -19,104 +19,42 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       credentials: {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
-        name: { label: "Name", type: "text", optional: true },
-        mode: { label: "Mode", type: "text", optional: true },
       },
       authorize: async (credentials) => {
-        console.log("[Auth] authorize called with credentials:", JSON.stringify(credentials));
+        console.log("[Auth] Login attempt");
         
         if (!credentials) {
-          console.error("[Auth] credentials is null/undefined");
+          console.error("[Auth] No credentials provided");
           return null;
         }
 
         const email = (credentials.email as string)?.trim();
         const password = credentials.password as string;
-        const name = (credentials.name as string)?.trim();
-        const mode = credentials.mode as string;
-
-        console.log("[Auth] Parsed - email:", email, "mode:", mode, "hasPassword:", !!password, "hasName:", !!name);
 
         if (!email || !password) {
           console.error("[Auth] Missing email or password");
           return null;
         }
 
-        // If mode is signup, create new user
-        if (mode === "signup") {
-          console.log("[Auth] Processing signup for:", email);
-          try {
-            const existingUser = await prisma.user.findUnique({
-              where: { email },
-            });
-            
-            console.log("[Auth] Existing user check:", existingUser ? "FOUND" : "NOT_FOUND");
-            
-            if (existingUser) {
-              console.log("[Auth] Signup failed - user already exists");
-              return null;
-            }
-
-            const hashedPassword = await bcrypt.hash(password, 12);
-            console.log("[Auth] Password hashed successfully");
-
-            const user = await prisma.user.create({
-              data: {
-                email,
-                password: hashedPassword,
-                name: name || null,
-              },
-            });
-
-            console.log("[Auth] User created with id:", user.id);
-
-            await prisma.necromancerProfile.create({
-              data: {
-                userId: user.id,
-              },
-            });
-
-            console.log("[Auth] Profile created. Signup SUCCESS for:", email);
-
-            return {
-              id: user.id,
-              email: user.email,
-              name: user.name,
-              image: null,
-            };
-          } catch (err) {
-            console.error("[Auth] Signup error:", err);
-            return null;
-          }
-        }
-
-        // Login mode (default)
-        console.log("[Auth] Processing login for:", email);
         try {
           const user = await prisma.user.findUnique({
             where: { email },
           });
 
-          if (!user) {
-            console.log("[Auth] Login failed - user not found");
+          if (!user || !user.password) {
+            console.log("[Auth] User not found or no password:", email);
             return null;
           }
 
-          if (!user.password) {
-            console.log("[Auth] Login failed - user has no password (likely OAuth user)");
-            return null;
-          }
-
-          console.log("[Auth] Found user, comparing passwords...");
           const passwordMatch = await bcrypt.compare(password, user.password);
-          console.log("[Auth] Password match result:", passwordMatch);
+          console.log("[Auth] Password match:", passwordMatch);
 
           if (!passwordMatch) {
-            console.log("[Auth] Login failed - password mismatch");
+            console.log("[Auth] Password mismatch for:", email);
             return null;
           }
 
-          console.log("[Auth] Login SUCCESS for:", email, "id:", user.id);
+          console.log("[Auth] Login SUCCESS for:", email);
 
           return {
             id: user.id,

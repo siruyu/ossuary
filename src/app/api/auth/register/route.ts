@@ -1,39 +1,35 @@
 import { NextResponse } from "next/server";
-import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
+import bcrypt from "bcryptjs";
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
     const { email, password, name } = body;
 
+    console.log("[Register] Attempting signup for:", email);
+
     if (!email || !password) {
-      return NextResponse.json(
-        { error: "Email and password are required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Email and password required" }, { status: 400 });
     }
 
     if (password.length < 6) {
-      return NextResponse.json(
-        { error: "Password must be at least 6 characters" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Password must be at least 6 characters" }, { status: 400 });
     }
 
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({
       where: { email },
     });
+
     if (existingUser) {
-      return NextResponse.json(
-        { error: "User with this email already exists" },
-        { status: 409 }
-      );
+      console.log("[Register] User already exists:", email);
+      return NextResponse.json({ error: "User already exists" }, { status: 409 });
     }
 
     // Hash password and create user
     const hashedPassword = await bcrypt.hash(password, 12);
+    
     const user = await prisma.user.create({
       data: {
         email,
@@ -42,28 +38,27 @@ export async function POST(request: Request) {
       },
     });
 
-    // Create default NecromancerProfile
+    console.log("[Register] User created:", user.id);
+
+    // Create necromancer profile
     await prisma.necromancerProfile.create({
       data: {
         userId: user.id,
       },
-    }); 
+    });
 
-    return NextResponse.json(
-      {
-        user: {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-        },
+    console.log("[Register] Profile created. Signup SUCCESS for:", email);
+
+    return NextResponse.json({
+      success: true,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
       },
-      { status: 201 }
-    );
-  } catch (error) {
-    console.error("Registration error:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    });
+  } catch (err) {
+    console.error("[Register] Error:", err);
+    return NextResponse.json({ error: "Registration failed" }, { status: 500 });
   }
 }
