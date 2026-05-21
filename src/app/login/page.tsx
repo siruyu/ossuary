@@ -52,18 +52,13 @@ export default function LoginPage() {
         redirect: false,
       });
 
+      console.log("[Login] signIn result:", JSON.stringify(result));
+
       if (result?.error) {
-        console.error("[Login] signIn error:", result.error);
-        if (result.error === "CredentialsSignin") {
-          setError(
-            isSignup
-              ? "RECORD_EXISTS. Access denied for duplicate identity."
-              : "AUTH_FAILED. Invalid credentials."
-          );
-        } else if (result.error === "Configuration") {
-          setError("SYSTEM_ERROR. Authentication service misconfigured.");
+        if (isSignup) {
+          setError("RECORD_EXISTS. Access denied for duplicate identity.");
         } else {
-          setError("AUTH_FAILED. " + result.error);
+          setError("AUTH_FAILED. Invalid credentials.");
         }
       } else if (result?.ok) {
         router.push("/");

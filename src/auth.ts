@@ -8,7 +8,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   basePath: "/api/auth",
   session: {
     strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60, // 30 days
+    maxAge: 30 * 24 * 60 * 60,
   },
   providers: [
     GitHub({
@@ -20,33 +20,46 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
         name: { label: "Name", type: "text", optional: true },
-        mode: { label: "Mode", type: "text" },
+        mode: { label: "Mode", type: "text", optional: true },
       },
       authorize: async (credentials) => {
-        try {
-          const creds = credentials as Record<string, string | undefined>;
-          const email = creds.email?.trim();
-          const password = creds.password;
-          const name = creds.name?.trim();
-          const mode = creds.mode;
+        console.log("[Auth] authorize called with credentials:", JSON.stringify(credentials));
+        
+        if (!credentials) {
+          console.error("[Auth] credentials is null/undefined");
+          return null;
+        }
 
-          console.log("[Auth] authorize called. mode:", mode, "email:", email);
+        const email = (credentials.email as string)?.trim();
+        const password = credentials.password as string;
+        const name = (credentials.name as string)?.trim();
+        const mode = credentials.mode as string;
 
-          if (!email || !password) {
-            console.log("[Auth] Missing email or password");
-            return null;
-          }
+        console.log("[Auth] Parsed - email:", email, "mode:", mode, "hasPassword:", !!password, "hasName:", !!name);
 
-          if (mode === "signup") {
+        if (!email || !password) {
+          console.error("[Auth] Missing email or password");
+          return null;
+        }
+
+        // If mode is signup, create new user
+        if (mode === "signup") {
+          console.log("[Auth] Processing signup for:", email);
+          try {
             const existingUser = await prisma.user.findUnique({
               where: { email },
             });
+            
+            console.log("[Auth] Existing user check:", existingUser ? "FOUND" : "NOT_FOUND");
+            
             if (existingUser) {
-              console.log("[Auth] Signup failed - user exists:", email);
+              console.log("[Auth] Signup failed - user already exists");
               return null;
             }
 
             const hashedPassword = await bcrypt.hash(password, 12);
+            console.log("[Auth] Password hashed successfully");
+
             const user = await prisma.user.create({
               data: {
                 email,
@@ -55,13 +68,15 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               },
             });
 
+            console.log("[Auth] User created with id:", user.id);
+
             await prisma.necromancerProfile.create({
               data: {
                 userId: user.id,
               },
             });
 
-            console.log("[Auth] Signup success:", email, "id:", user.id);
+            console.log("[Auth] Profile created. Signup SUCCESS for:", email);
 
             return {
               id: user.id,
@@ -69,24 +84,39 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               name: user.name,
               image: null,
             };
+          } catch (err) {
+            console.error("[Auth] Signup error:", err);
+            return null;
           }
+        }
 
-          // Login mode
+        // Login mode (default)
+        console.log("[Auth] Processing login for:", email);
+        try {
           const user = await prisma.user.findUnique({
             where: { email },
           });
-          if (!user || !user.password) {
-            console.log("[Auth] Login failed - user not found or no password:", email);
+
+          if (!user) {
+            console.log("[Auth] Login failed - user not found");
             return null;
           }
 
+          if (!user.password) {
+            console.log("[Auth] Login failed - user has no password (likely OAuth user)");
+            return null;
+          }
+
+          console.log("[Auth] Found user, comparing passwords...");
           const passwordMatch = await bcrypt.compare(password, user.password);
+          console.log("[Auth] Password match result:", passwordMatch);
+
           if (!passwordMatch) {
-            console.log("[Auth] Login failed - password mismatch:", email);
+            console.log("[Auth] Login failed - password mismatch");
             return null;
           }
 
-          console.log("[Auth] Login success:", email, "id:", user.id);
+          console.log("[Auth] Login SUCCESS for:", email, "id:", user.id);
 
           return {
             id: user.id,
@@ -95,7 +125,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             image: null,
           };
         } catch (err) {
-          console.error("[Auth] authorize error:", err);
+          console.error("[Auth] Login error:", err);
           return null;
         }
       },
@@ -107,7 +137,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.id = user.id;
         token.email = user.email;
         token.name = user.name;
-        // NEVER store image in JWT - base64 avatars are too large for cookies
       }
       if (trigger === "update" && session) {
         if (session.name) token.name = session.name;
@@ -118,7 +147,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (token.id) session.user.id = token.id as string;
       if (token.email) session.user.email = token.email as string;
       if (token.name) session.user.name = token.name as string;
-      // Do NOT set session.user.image from token
       session.user.image = null;
       return session;
     },
