@@ -236,31 +236,28 @@ export default function NecromancerPage() {
   }, [userId, fetchBurials, refreshProfile]);
 
   useEffect(() => {
-    if (!loggedIn) return;
+    if (!loggedIn || !userId) return;
 
     let cancelled = false;
     async function fetchData() {
       try {
         // Fetch profile first
-        const profileRes = await fetch(`/api/profile?userId=${encodeURIComponent(userId!)}`, { credentials: "include" });
+        const profileRes = await fetch(`/api/profile?userId=${encodeURIComponent(userId)}`, { credentials: "include" });
         if (cancelled) return;
-        if (profileRes.ok) setProfile(await profileRes.json());
+        if (profileRes.ok) {
+          const profileData = await profileRes.json();
+          setProfile(profileData);
+        }
         
         // Fetch all lists in parallel
         await Promise.all([fetchBurials(1), fetchLootedItems(1), fetchRituals(1)]);
-        
-        // Refresh profile to ensure lootedResources counter is up to date
-        if (!cancelled) {
-          const profileRes2 = await fetch(`/api/profile?userId=${encodeURIComponent(userId!)}`, { credentials: "include" });
-          if (profileRes2.ok) setProfile(await profileRes2.json());
-        }
       } catch (err) {
         console.error("Failed to fetch data:", err);
       }
     }
     fetchData();
     return () => { cancelled = true; };
-  }, [loggedIn, userId, fetchBurials, fetchLootedItems, fetchRituals]);
+  }, [loggedIn, userId]);
 
   if (status === "loading") {
     return (

@@ -260,25 +260,22 @@ export default function ConfigNecromancer() {
   // Fetch profile on mount
   // ------------------------------------------------------------------
   useEffect(() => {
-    if (!loggedIn) return;
+    if (!loggedIn || !userId) return;
 
     let cancelled = false;
     async function fetchProfile() {
       try {
-        const res = await fetch(`/api/profile?userId=${encodeURIComponent(userId!)}`);
+        const res = await fetch(`/api/profile?userId=${encodeURIComponent(userId)}`, { credentials: "include" });
         if (cancelled) return;
-     if (res.ok) {
-       const data: ProfileData = await res.json();
-       setProfile(data);
-       setName(data.name || "");
-       setTitle(data.title || "");
-       setBio(data.bio || "");
-       // Fetch GitHub connection status and archive depth
-       fetchGithubStatus();
-       fetchArchiveDepth();
-     }
-      } catch {
-        // silent fallback
+        if (res.ok) {
+          const data: ProfileData = await res.json();
+          setProfile(data);
+          setName(data.name ?? "");
+          setTitle(data.title ?? "");
+          setBio(data.bio ?? "");
+        }
+      } catch (err) {
+        console.error("Failed to fetch profile:", err);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -287,7 +284,7 @@ export default function ConfigNecromancer() {
     fetchGithubStatus();
     fetchArchiveDepth();
     return () => { cancelled = true; };
-  }, [loggedIn, userId, fetchGithubStatus, fetchArchiveDepth]);
+  }, [loggedIn, userId]);
 
   // ------------------------------------------------------------------
   // Save
@@ -304,42 +301,35 @@ export default function ConfigNecromancer() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId,
-          name,
-          title,
-          bio,
+          name: name || null,
+          title: title || "APPRENTICE",
+          bio: bio || "",
           systemWhispers: alerts.systemWhispers,
         }),
       });
       
+      const data = await res.json();
+      
       if (!res.ok) {
-        const error = await res.json().catch(() => ({ error: "Save failed" }));
-        console.error("Save failed:", res.status, error);
-        alert("SAVE_FAILED: " + (error.error || "Unknown error"));
+        console.error("Save failed:", res.status, data);
+        alert("SAVE_FAILED: " + (data.error || "Unknown error"));
         setSaving(false);
         return;
       }
       
-      const data = await res.json();
-      // Update local state with returned data to ensure consistency
       setProfile((prev) => prev ? {
         ...prev,
         name: data.name,
-        image: data.image,
         bio: data.bio,
         title: data.title,
         systemWhispers: data.systemWhispers,
       } : null);
       
-      // Update session with new name and image
-      const sessionUpdates: Record<string, string> = {};
-      if (data.name !== undefined) {
-        sessionUpdates.name = data.name;
-      }
-      if (data.image !== undefined) {
-        sessionUpdates.image = data.image;
-      }
-      if (Object.keys(sessionUpdates).length > 0) {
-        await update(sessionUpdates);
+      if (data.name !== undefined || data.image !== undefined) {
+        await update({ 
+          ...(data.name !== undefined && { name: data.name }), 
+          ...(data.image !== undefined && { image: data.image }) 
+        });
       }
       
       setSaved(true);
@@ -347,6 +337,10 @@ export default function ConfigNecromancer() {
     } catch (err) {
       console.error("Save error:", err);
       alert("SAVE_FAILED: Network error");
+    } finally {
+      setSaving(false);
+    }
+  }, [userId, name, title, bio, alerts.systemWhispers]);
     } finally {
       setSaving(false);
     }
@@ -359,6 +353,11 @@ export default function ConfigNecromancer() {
     const file = e.target.files?.[0];
     if (!file || !userId) return;
 
+    if (file.size > 2 * 1024 * 1024) {
+      alert("AVATAR_TOO_LARGE: Max 2MB allowed");
+      return;
+    }
+
     setUploadingAvatar(true);
     try {
       const formData = new FormData();
@@ -370,22 +369,19 @@ export default function ConfigNecromancer() {
         body: formData,
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        
-        // Update the session with new image
+      const data = await res.json();
+
+      if (res.ok && data.url) {
         await update({ image: data.url });
         
-        // Fetch fresh profile data to ensure consistency
         const profileRes = await fetch(`/api/profile?userId=${encodeURIComponent(userId)}`, { credentials: "include" });
         if (profileRes.ok) {
           const freshProfile = await profileRes.json();
-          setProfile((prev) => prev ? { ...prev, image: freshProfile.image, name: freshProfile.name } : null);
+          setProfile((prev) => prev ? { ...prev, image: freshProfile.image } : null);
         }
       } else {
-        const error = await res.json().catch(() => ({ error: "Upload failed" }));
-        console.error("Avatar upload failed:", error);
-        alert("AVATAR_UPLOAD_FAILED: " + (error.error || "Unknown error"));
+        console.error("Avatar upload failed:", data);
+        alert("AVATAR_UPLOAD_FAILED: " + (data.error || "Unknown error"));
       }
     } catch (err) {
       console.error("Avatar upload failed:", err);

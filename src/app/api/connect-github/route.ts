@@ -9,8 +9,19 @@ export async function GET(request: Request) {
   }
   
   const clientId = process.env.AUTH_GITHUB_ID || "Ov23lil7aQwoM2iP9kZN";
-  // Use the same base URL as the incoming request to ensure consistency
-  const baseUrl = `${new URL(request.url).protocol}//${new URL(request.url).host}`;
+  
+  // Use NEXTAUTH_URL if available, otherwise fall back to VERCEL_URL (Vercel deployments), 
+  // otherwise use the request's host
+  let baseUrl: string;
+  if (process.env.NEXTAUTH_URL) {
+    baseUrl = process.env.NEXTAUTH_URL;
+  } else if (process.env.VERCEL_URL) {
+    baseUrl = `https://${process.env.VERCEL_URL}`;
+  } else {
+    const reqUrl = new URL(request.url);
+    baseUrl = `${reqUrl.protocol}//${reqUrl.host}`;
+  }
+  
   const callbackUrl = `${baseUrl}/api/connect-github/callback`;
   const scopes = "repo read:user";
   const state = session.user.id;

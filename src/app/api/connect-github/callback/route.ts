@@ -24,6 +24,7 @@ export async function GET(request: Request) {
       client_id: clientId,
       client_secret: clientSecret,
       code,
+      redirect_uri: url.origin + "/api/connect-github/callback",
     }),
   });
   
@@ -31,7 +32,7 @@ export async function GET(request: Request) {
   
   if (!tokenData.access_token) {
     console.error("GitHub token exchange failed:", tokenData);
-    return NextResponse.json({ error: "No token" }, { status: 400 });
+    return NextResponse.json({ error: "Token exchange failed: " + JSON.stringify(tokenData) }, { status: 400 });
   }
   
   // Get GitHub user
@@ -59,7 +60,15 @@ export async function GET(request: Request) {
     },
   });
   
-  const baseUrl = `${url.protocol}//${url.host}`;
+  // Use same base URL logic for redirect
+  let baseUrl: string;
+  if (process.env.NEXTAUTH_URL) {
+    baseUrl = process.env.NEXTAUTH_URL;
+  } else if (process.env.VERCEL_URL) {
+    baseUrl = `https://${process.env.VERCEL_URL}`;
+  } else {
+    baseUrl = `${url.protocol}//${url.host}`;
+  }
   
   return NextResponse.redirect(`${baseUrl}/ritual?connected=true`);
 }
