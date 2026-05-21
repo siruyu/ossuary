@@ -53,16 +53,26 @@ export default function LoginPage() {
       });
 
       if (result?.error) {
-        setError(
-          isSignup
-            ? "RECORD_EXISTS. Access denied for duplicate identity."
-            : "AUTH_FAILED. Invalid credentials."
-        );
-      } else {
+        console.error("[Login] signIn error:", result.error);
+        if (result.error === "CredentialsSignin") {
+          setError(
+            isSignup
+              ? "RECORD_EXISTS. Access denied for duplicate identity."
+              : "AUTH_FAILED. Invalid credentials."
+          );
+        } else if (result.error === "Configuration") {
+          setError("SYSTEM_ERROR. Authentication service misconfigured.");
+        } else {
+          setError("AUTH_FAILED. " + result.error);
+        }
+      } else if (result?.ok) {
         router.push("/");
         router.refresh();
+      } else {
+        setError("CONNECTION_REFUSED. Session initialization failed.");
       }
-    } catch {
+    } catch (err) {
+      console.error("[Login] signIn exception:", err);
       setError("CONNECTION_REFUSED. Session initialization failed.");
     } finally {
       setLoading(false);

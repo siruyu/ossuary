@@ -23,56 +23,81 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         mode: { label: "Mode", type: "text" },
       },
       authorize: async (credentials) => {
-        const { email, password, name, mode } = credentials as Record<string, string>;
+        try {
+          const creds = credentials as Record<string, string | undefined>;
+          const email = creds.email?.trim();
+          const password = creds.password;
+          const name = creds.name?.trim();
+          const mode = creds.mode;
 
-        if (!email || !password) {
-          return null;
-        }
+          console.log("[Auth] authorize called. mode:", mode, "email:", email);
 
-        if (mode === "signup") {
-          const existingUser = await prisma.user.findUnique({
+          if (!email || !password) {
+            console.log("[Auth] Missing email or password");
+            return null;
+          }
+
+          if (mode === "signup") {
+            const existingUser = await prisma.user.findUnique({
+              where: { email },
+            });
+            if (existingUser) {
+              console.log("[Auth] Signup failed - user exists:", email);
+              return null;
+            }
+
+            const hashedPassword = await bcrypt.hash(password, 12);
+            const user = await prisma.user.create({
+              data: {
+                email,
+                password: hashedPassword,
+                name: name || null,
+              },
+            });
+
+            await prisma.necromancerProfile.create({
+              data: {
+                userId: user.id,
+              },
+            });
+
+            console.log("[Auth] Signup success:", email, "id:", user.id);
+
+            return {
+              id: user.id,
+              email: user.email,
+              name: user.name,
+              image: null,
+            };
+          }
+
+          // Login mode
+          const user = await prisma.user.findUnique({
             where: { email },
           });
-          if (existingUser) return null;
+          if (!user || !user.password) {
+            console.log("[Auth] Login failed - user not found or no password:", email);
+            return null;
+          }
 
-          const hashedPassword = await bcrypt.hash(password, 12);
-          const user = await prisma.user.create({
-            data: {
-              email,
-              password: hashedPassword,
-              name: name || null,
-            },
-          });
+          const passwordMatch = await bcrypt.compare(password, user.password);
+          if (!passwordMatch) {
+            console.log("[Auth] Login failed - password mismatch:", email);
+            return null;
+          }
 
-          await prisma.necromancerProfile.create({
-            data: {
-              userId: user.id,
-            },
-          });
+          console.log("[Auth] Login success:", email, "id:", user.id);
 
           return {
             id: user.id,
             email: user.email,
             name: user.name,
-            image: user.image,
+            image: null,
           };
+        } catch (err) {
+          console.error("[Auth] authorize error:", err);
+          return null;
         }
-
-        // Login mode
-        const user = await prisma.user.findUnique({
-          where: { email },
-        });
-        if (!user || !user.password) return null;
-
-        const passwordMatch = await bcrypt.compare(password, user.password);
-        if (!passwordMatch) return null;
-
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          image: user.image,
-        };
       },
     }),
   ],
@@ -83,20 +108,17 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.email = user.email;
         token.name = user.name;
         // NEVER store image in JWT - base64 avatars are too large for cookies
-        // Image is fetched from /api/profile instead
       }
-      // Handle session update (e.g., when user updates profile)
       if (trigger === "update" && session) {
         if (session.name) token.name = session.name;
-        // Ignore session.image updates to prevent cookie bloat
       }
       return token;
     },
     async session({ session, token }) {
-      session.user.id = token.id as string;
-      session.user.email = token.email as string;
-      session.user.name = token.name as string;
-      // Do NOT set session.user.image from token - fetch from /api/profile instead
+      if (token.id) session.user.id = token.id as string;
+      if (token.email) session.user.email = token.email as string;
+      if (token.name) session.user.name = token.name as string;
+      // Do NOT set session.user.image from token
       session.user.image = null;
       return session;
     },
