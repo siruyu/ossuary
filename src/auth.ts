@@ -82,12 +82,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.id = user.id;
         token.email = user.email;
         token.name = user.name;
-        token.image = user.image;
+        // NEVER store image in JWT - base64 avatars are too large for cookies
+        // Image is fetched from /api/profile instead
       }
       // Handle session update (e.g., when user updates profile)
       if (trigger === "update" && session) {
         if (session.name) token.name = session.name;
-        if (session.image) token.image = session.image;
+        // Ignore session.image updates to prevent cookie bloat
       }
       return token;
     },
@@ -95,7 +96,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       session.user.id = token.id as string;
       session.user.email = token.email as string;
       session.user.name = token.name as string;
-      session.user.image = token.image as string;
+      // Do NOT set session.user.image from token - fetch from /api/profile instead
+      session.user.image = null;
       return session;
     },
   },
