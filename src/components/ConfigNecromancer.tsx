@@ -151,7 +151,6 @@ function Swatch({
 interface ProfileData {
   uid: string;
   name: string | null;
-  displayName: string;
   email: string | null;
   image: string | null;
   title: string;
@@ -268,16 +267,16 @@ export default function ConfigNecromancer() {
       try {
         const res = await fetch(`/api/profile?userId=${encodeURIComponent(userId!)}`);
         if (cancelled) return;
-        if (res.ok) {
-          const data: ProfileData = await res.json();
-          setProfile(data);
-          setName(data.name || data.displayName);
-          setTitle(data.title);
-          setBio(data.bio);
-          // Fetch GitHub connection status and archive depth
-          fetchGithubStatus();
-          fetchArchiveDepth();
-        }
+     if (res.ok) {
+       const data: ProfileData = await res.json();
+       setProfile(data);
+       setName(data.name || "");
+       setTitle(data.title || "");
+       setBio(data.bio || "");
+       // Fetch GitHub connection status and archive depth
+       fetchGithubStatus();
+       fetchArchiveDepth();
+     }
       } catch {
         // silent fallback
       } finally {

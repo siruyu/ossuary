@@ -9,7 +9,8 @@ export async function GET(request: Request) {
   }
   
   const clientId = process.env.AUTH_GITHUB_ID || "Ov23lil7aQwoM2iP9kZN";
-  const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
+  // Use the same base URL as the incoming request to ensure consistency
+  const baseUrl = `${new URL(request.url).protocol}//${new URL(request.url).host}`;
   const callbackUrl = `${baseUrl}/api/connect-github/callback`;
   const scopes = "repo read:user";
   const state = session.user.id;

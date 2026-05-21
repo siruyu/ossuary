@@ -147,18 +147,18 @@ export default function NecromancerPage() {
     }
   }, [userId]);
 
-  const fetchLootedItems = useCallback(async (page = 1) => {
-    if (!userId) return;
-    const res = await fetch(`/api/loot?page=${page}&limit=20`, { credentials: "include" });
-    if (res.ok) {
-      const data = await res.json();
-      setLootedItems(data.items);
-      setLootTotalPages(data.totalPages);
-      setLootPage(data.page);
-    } else {
-      console.error("Failed to fetch looted items:", res.status, await res.json().catch(() => ({})));
-    }
-  }, [userId]);
+   const fetchLootedItems = useCallback(async (page = 1) => {
+     if (!userId) return;
+     const res = await fetch(`/api/loot?userId=${encodeURIComponent(userId)}&page=${page}&limit=20`, { credentials: "include" });
+     if (res.ok) {
+       const data = await res.json();
+       setLootedItems(data.items);
+       setLootTotalPages(data.totalPages);
+       setLootPage(data.page);
+     } else {
+       console.error("Failed to fetch looted items:", res.status, await res.json().catch(() => ({})));
+     }
+   }, [userId]);
 
   const fetchRituals = useCallback(async (page = 1) => {
     if (!userId) return;
