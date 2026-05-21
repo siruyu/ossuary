@@ -325,11 +325,9 @@ export default function ConfigNecromancer() {
         systemWhispers: data.systemWhispers,
       } : null);
       
-      if (data.name !== undefined || data.image !== undefined) {
-        await update({ 
-          ...(data.name !== undefined && { name: data.name }), 
-          ...(data.image !== undefined && { image: data.image }) 
-        });
+      // Only update session with name - image may be large base64, skip it
+      if (data.name !== undefined) {
+        await update({ name: data.name });
       }
       
       setSaved(true);
@@ -368,12 +366,14 @@ export default function ConfigNecromancer() {
       const data = await res.json();
 
       if (res.ok && data.url) {
-        await update({ image: data.url });
-        
+        // Don't use update() - base64 data URL is too large for JWT session
+        // Just refresh profile data directly
         const profileRes = await fetch(`/api/profile?userId=${encodeURIComponent(userId)}`, { credentials: "include" });
         if (profileRes.ok) {
           const freshProfile = await profileRes.json();
           setProfile((prev) => prev ? { ...prev, image: freshProfile.image } : null);
+          // Notify other components (like LayoutShell) about avatar change
+          window.dispatchEvent(new CustomEvent("avatar-updated", { detail: freshProfile.image }));
         }
       } else {
         console.error("Avatar upload failed:", data);

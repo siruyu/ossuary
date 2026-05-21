@@ -3,9 +3,37 @@
 import { signOut, useSession } from "next-auth/react";
 import Link from "next/link";
 import { LogOut } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
 
 export default function SignInButton() {
   const { data: session, status } = useSession();
+  const [userImage, setUserImage] = useState<string | null>(null);
+
+  const fetchUserImage = useCallback(async () => {
+    if (!session?.user?.id) return;
+    try {
+      const res = await fetch(`/api/profile?userId=${encodeURIComponent(session.user.id)}`, { credentials: "include" });
+      if (res.ok) {
+        const data = await res.json();
+        setUserImage(data.image);
+      }
+    } catch {
+      // ignore
+    }
+  }, [session?.user?.id]);
+
+  useEffect(() => {
+    fetchUserImage();
+  }, [fetchUserImage]);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as string | null;
+      setUserImage(detail);
+    };
+    window.addEventListener("avatar-updated", handler);
+    return () => window.removeEventListener("avatar-updated", handler);
+  }, []);
 
   if (status === "loading") {
     return (
@@ -41,10 +69,10 @@ export default function SignInButton() {
         className="w-8 h-8 bg-ossuary-yellow text-ossuary-black flex items-center justify-center text-[10px] font-bold tracking-wider cursor-pointer hover:bg-yellow-400 transition-colors rounded-full"
         title={user?.name || "Unknown"}
       >
-        {user?.image ? (
+        {userImage ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={user.image}
+            src={userImage}
             alt="avatar"
             className="w-full h-full object-cover rounded-full"
           />
