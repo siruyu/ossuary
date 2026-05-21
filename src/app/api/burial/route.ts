@@ -24,8 +24,13 @@ export async function GET(request: Request) {
 
   return NextResponse.json({
     burials: burials.map((b) => ({
-      ...b,
+      id: b.id,
+      name: b.name,
+      failure: b.failureMode,
+      description: b.description,
       tags: tagsToArray(b.tags),
+      nodeRef: b.nodeRef || "",
+      repoUrl: b.repoUrl,
       techStack: tagsToArray(b.techStack),
       lootedModules: b.lootedModules.map((m) => ({
         ...m,
