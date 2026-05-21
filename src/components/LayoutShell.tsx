@@ -265,6 +265,7 @@ function RestInPiecesButtonInner() {
   const { data: session, status } = useSession();
   const [signingOut, setSigningOut] = useState(false);
   const [userImage, setUserImage] = useState<string | null>(null);
+  const [avatarVersion, setAvatarVersion] = useState(0);
 
   const fetchUserImage = useCallback(async () => {
     if (!session?.user?.id) return;
@@ -281,13 +282,10 @@ function RestInPiecesButtonInner() {
 
   useEffect(() => {
     fetchUserImage();
-  }, [fetchUserImage]);
+  }, [fetchUserImage, avatarVersion]);
 
   useEffect(() => {
-    const handler = (e: Event) => {
-      const detail = (e as CustomEvent).detail as string | null;
-      setUserImage(detail);
-    };
+    const handler = () => setAvatarVersion((v) => v + 1);
     window.addEventListener("avatar-updated", handler);
     return () => window.removeEventListener("avatar-updated", handler);
   }, []);

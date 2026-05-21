@@ -308,15 +308,17 @@ export default function ConfigNecromancer() {
         }),
       });
       
-      const data = await res.json();
-      
       if (!res.ok) {
-        console.error("Save failed:", res.status, data);
-        alert("SAVE_FAILED: " + (data.error || "Unknown error"));
+        const errorData = await res.json().catch(() => null);
+        console.error("Save failed:", res.status, errorData);
+        alert("SAVE_FAILED: " + (errorData?.error || res.statusText || "Unknown error"));
         setSaving(false);
         return;
       }
       
+      const data = await res.json();
+      
+      // Update local profile state
       setProfile((prev) => prev ? {
         ...prev,
         name: data.name,
@@ -325,8 +327,8 @@ export default function ConfigNecromancer() {
         systemWhispers: data.systemWhispers,
       } : null);
       
-      // Only update session with name - image may be large base64, skip it
-      if (data.name !== undefined) {
+      // Update session name only (safe size)
+      if (data.name) {
         await update({ name: data.name });
       }
       
@@ -372,8 +374,9 @@ export default function ConfigNecromancer() {
         if (profileRes.ok) {
           const freshProfile = await profileRes.json();
           setProfile((prev) => prev ? { ...prev, image: freshProfile.image } : null);
-          // Notify other components (like LayoutShell) about avatar change
-          window.dispatchEvent(new CustomEvent("avatar-updated", { detail: freshProfile.image }));
+          // Notify other components about avatar change using localStorage + event
+          localStorage.setItem("avatar-updated", Date.now().toString());
+          window.dispatchEvent(new Event("avatar-updated"));
         }
       } else {
         console.error("Avatar upload failed:", data);

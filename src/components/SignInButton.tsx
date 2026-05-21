@@ -8,6 +8,7 @@ import { useState, useEffect, useCallback } from "react";
 export default function SignInButton() {
   const { data: session, status } = useSession();
   const [userImage, setUserImage] = useState<string | null>(null);
+  const [avatarVersion, setAvatarVersion] = useState(0);
 
   const fetchUserImage = useCallback(async () => {
     if (!session?.user?.id) return;
@@ -24,13 +25,10 @@ export default function SignInButton() {
 
   useEffect(() => {
     fetchUserImage();
-  }, [fetchUserImage]);
+  }, [fetchUserImage, avatarVersion]);
 
   useEffect(() => {
-    const handler = (e: Event) => {
-      const detail = (e as CustomEvent).detail as string | null;
-      setUserImage(detail);
-    };
+    const handler = () => setAvatarVersion((v) => v + 1);
     window.addEventListener("avatar-updated", handler);
     return () => window.removeEventListener("avatar-updated", handler);
   }, []);

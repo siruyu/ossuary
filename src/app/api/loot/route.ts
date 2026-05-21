@@ -62,7 +62,13 @@ export async function POST(request: Request) {
 
 export async function GET(request: Request) {
   const session = await auth();
-  const userId = session?.user?.id;
+  let userId: string | undefined = session?.user?.id;
+
+  // Fallback to query parameter if session userId is not available
+  if (!userId) {
+    const { searchParams } = new URL(request.url);
+    userId = searchParams.get("userId") || undefined;
+  }
 
   console.log("[LOOT API GET] Session:", session ? "exists" : "null");
   console.log("[LOOT API GET] UserId:", userId);
