@@ -29,35 +29,6 @@ export default function LayoutShell({
   const { data: session, status } = useSession();
   const [cpuLoad, setCpuLoad] = useState(47);
   const [redirecting, setRedirecting] = useState(false);
-  const [userImage, setUserImage] = useState<string | null>(null);
-
-  // Fetch user image from profile API (base64 avatars are too large for JWT session)
-  const fetchUserImage = useCallback(async () => {
-    if (!session?.user?.id) return;
-    try {
-      const res = await fetch(`/api/profile?userId=${encodeURIComponent(session.user.id)}`, { credentials: "include" });
-      if (res.ok) {
-        const data = await res.json();
-        setUserImage(data.image);
-      }
-    } catch {
-      // ignore
-    }
-  }, [session?.user?.id]);
-
-  useEffect(() => {
-    fetchUserImage();
-  }, [fetchUserImage]);
-
-  // Listen for avatar updates from settings page
-  useEffect(() => {
-    const handler = (e: Event) => {
-      const detail = (e as CustomEvent).detail as string | null;
-      setUserImage(detail);
-    };
-    window.addEventListener("avatar-updated", handler);
-    return () => window.removeEventListener("avatar-updated", handler);
-  }, []);
 
   // Simulate CPU fluctuation - must be before any conditional returns
   useEffect(() => {
