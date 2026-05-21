@@ -139,7 +139,7 @@ export default function NecromancerPage() {
   const fetchBurials = useCallback(async (page = 1) => {
     if (!userId) return;
     try {
-      const res = await fetch(`/api/burial?userId=${encodeURIComponent(userId)}&page=${page}&limit=10`, { credentials: "include" });
+      const res = await fetch(`/api/burial?userId=${encodeURIComponent(userId)}&page=${page}&limit=10`);
       if (res.ok) {
         const data = await res.json();
         setBuriedNodes(data.burials);
@@ -154,7 +154,7 @@ export default function NecromancerPage() {
   const fetchLootedItems = useCallback(async (page = 1) => {
     if (!userId) return;
     try {
-      const res = await fetch(`/api/loot?page=${page}&limit=20`, { credentials: "include" });
+      const res = await fetch(`/api/loot?userId=${encodeURIComponent(userId)}&page=${page}&limit=20`);
       if (res.ok) {
         const data = await res.json();
         setLootedItems(data.items);
@@ -171,7 +171,7 @@ export default function NecromancerPage() {
   const fetchRituals = useCallback(async (page = 1) => {
     if (!userId) return;
     try {
-      const res = await fetch(`/api/rituals?userId=${encodeURIComponent(userId)}&page=${page}&limit=10`, { credentials: "include" });
+      const res = await fetch(`/api/rituals?userId=${encodeURIComponent(userId)}&page=${page}&limit=10`);
       if (res.ok) {
         const data = await res.json();
         setRituals(data.rituals);
@@ -186,7 +186,7 @@ export default function NecromancerPage() {
   const refreshProfile = useCallback(async () => {
     if (!userId) return;
     try {
-      const res = await fetch(`/api/profile?userId=${encodeURIComponent(userId)}`, { credentials: "include" });
+      const res = await fetch(`/api/profile?userId=${encodeURIComponent(userId)}`);
       if (res.ok) {
         setProfile(await res.json());
       }
@@ -238,11 +238,12 @@ export default function NecromancerPage() {
   useEffect(() => {
     if (!loggedIn || !userId) return;
 
+    const uid = userId;
     let cancelled = false;
     async function fetchData() {
       try {
         // Fetch profile first
-        const profileRes = await fetch(`/api/profile?userId=${encodeURIComponent(userId!)}`, { credentials: "include" });
+        const profileRes = await fetch(`/api/profile?userId=${encodeURIComponent(uid)}`);
         if (cancelled) return;
         if (profileRes.ok) {
           const profileData = await profileRes.json();
@@ -250,7 +251,34 @@ export default function NecromancerPage() {
         }
         
         // Fetch all lists in parallel
-        await Promise.all([fetchBurials(1), fetchLootedItems(1), fetchRituals(1)]);
+        const [burialsRes, lootRes, ritualsRes] = await Promise.all([
+          fetch(`/api/burial?userId=${encodeURIComponent(uid)}&page=1&limit=10`),
+          fetch(`/api/loot?userId=${encodeURIComponent(uid)}&page=1&limit=20`),
+          fetch(`/api/rituals?userId=${encodeURIComponent(uid)}&page=1&limit=10`),
+        ]);
+
+        if (cancelled) return;
+
+        if (burialsRes.ok) {
+          const data = await burialsRes.json();
+          setBuriedNodes(data.burials);
+          setBurialTotalPages(data.totalPages);
+          setBurialPage(data.page);
+        }
+
+        if (lootRes.ok) {
+          const data = await lootRes.json();
+          setLootedItems(data.items);
+          setLootTotalPages(data.totalPages);
+          setLootPage(data.page);
+        }
+
+        if (ritualsRes.ok) {
+          const data = await ritualsRes.json();
+          setRituals(data.rituals);
+          setRitualTotalPages(data.totalPages);
+          setRitualPage(data.page);
+        }
       } catch (err) {
         console.error("Failed to fetch data:", err);
       }

@@ -265,7 +265,7 @@ export default function ConfigNecromancer() {
     let cancelled = false;
     async function fetchProfile() {
       try {
-        const res = await fetch(`/api/profile?userId=${encodeURIComponent(userId!)}`, { credentials: "include" });
+        const res = await fetch(`/api/profile?userId=${encodeURIComponent(userId!)}`);
         if (cancelled) return;
         if (res.ok) {
           const data: ProfileData = await res.json();
@@ -370,7 +370,7 @@ export default function ConfigNecromancer() {
       if (res.ok && data.url) {
         // Don't use update() - base64 data URL is too large for JWT session
         // Just refresh profile data directly
-        const profileRes = await fetch(`/api/profile?userId=${encodeURIComponent(userId)}`, { credentials: "include" });
+        const profileRes = await fetch(`/api/profile?userId=${encodeURIComponent(userId)}`);
         if (profileRes.ok) {
           const freshProfile = await profileRes.json();
           setProfile((prev) => prev ? { ...prev, image: freshProfile.image } : null);

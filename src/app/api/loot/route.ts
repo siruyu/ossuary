@@ -6,9 +6,6 @@ export async function POST(request: Request) {
   const session = await auth();
   const userId = session?.user?.id;
 
-  console.log("[LOOT API] Session:", session ? "exists" : "null");
-  console.log("[LOOT API] UserId:", userId);
-
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized", details: "No session found" }, { status: 401 });
   }
@@ -31,8 +28,6 @@ export async function POST(request: Request) {
         type,
       },
     });
-
-    console.log("[LOOT API] Created item:", lootedItem.id);
 
     await prisma.necromancerProfile.upsert({
       where: { userId },
@@ -61,23 +56,25 @@ export async function POST(request: Request) {
 }
 
 export async function GET(request: Request) {
-  const session = await auth();
-  let userId: string | undefined = session?.user?.id;
-
-  // Fallback to query parameter if session userId is not available
-  if (!userId) {
-    const { searchParams } = new URL(request.url);
-    userId = searchParams.get("userId") || undefined;
-  }
-
-  console.log("[LOOT API GET] Session:", session ? "exists" : "null");
-  console.log("[LOOT API GET] UserId:", userId);
-
-  if (!userId) {
-    return NextResponse.json({ error: "Unauthorized", details: "No session found" }, { status: 401 });
-  }
-
   const { searchParams } = new URL(request.url);
+  
+  // Accept userId from query param (primary method, same as burial/rituals APIs)
+  let userId = searchParams.get("userId");
+
+  // Fallback to session if no userId in query
+  if (!userId) {
+    try {
+      const session = await auth();
+      userId = session?.user?.id || null;
+    } catch {
+      // auth() may fail if session cookie is corrupted
+    }
+  }
+
+  if (!userId) {
+    return NextResponse.json({ error: "Unauthorized", details: "No userId provided" }, { status: 401 });
+  }
+
   const page = parseInt(searchParams.get("page") || "1");
   const limit = parseInt(searchParams.get("limit") || "20");
   const skip = (page - 1) * limit;
@@ -92,8 +89,6 @@ export async function GET(request: Request) {
       }),
       prisma.lootedItem.count({ where: { userId } }),
     ]);
-
-    console.log("[LOOT API GET] Found items:", items.length);
 
     return NextResponse.json({
       items,
