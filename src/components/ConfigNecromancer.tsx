@@ -298,9 +298,6 @@ export default function ConfigNecromancer() {
     setSaving(true);
     setSaved(false);
     
-    // Small delay to ensure UI shows "SAVING..." state
-    await new Promise(resolve => setTimeout(resolve, 100));
-    
     try {
       const res = await fetch(`/api/profile`, {
         method: "PATCH",
@@ -315,7 +312,9 @@ export default function ConfigNecromancer() {
       });
       
       if (!res.ok) {
-        console.error("Save failed:", res.status, res.statusText);
+        const error = await res.json().catch(() => ({ error: "Save failed" }));
+        console.error("Save failed:", res.status, error);
+        alert("SAVE_FAILED: " + (error.error || "Unknown error"));
         setSaving(false);
         return;
       }
@@ -343,12 +342,11 @@ export default function ConfigNecromancer() {
         await update(sessionUpdates);
       }
       
-      // Force a small delay to allow React to re-render with updated session
-      await new Promise(resolve => setTimeout(resolve, 50));
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch (err) {
       console.error("Save error:", err);
+      alert("SAVE_FAILED: Network error");
     } finally {
       setSaving(false);
     }
@@ -375,30 +373,25 @@ export default function ConfigNecromancer() {
       if (res.ok) {
         const data = await res.json();
         
-        // Save to user in database first
-        const saveRes = await fetch(`/api/profile`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ userId, image: data.url }),
-        });
+        // Update the session with new image
+        await update({ image: data.url });
         
-        if (saveRes.ok) {
-          // Update the session with new image
-          await update({ image: data.url });
-          
-          // Fetch fresh profile data to ensure consistency
-          const profileRes = await fetch(`/api/profile?userId=${encodeURIComponent(userId)}`);
-          if (profileRes.ok) {
-            const freshProfile = await profileRes.json();
-            setProfile((prev) => prev ? { ...prev, image: freshProfile.image, name: freshProfile.name } : null);
-          }
+        // Fetch fresh profile data to ensure consistency
+        const profileRes = await fetch(`/api/profile?userId=${encodeURIComponent(userId)}`, { credentials: "include" });
+        if (profileRes.ok) {
+          const freshProfile = await profileRes.json();
+          setProfile((prev) => prev ? { ...prev, image: freshProfile.image, name: freshProfile.name } : null);
         }
+      } else {
+        const error = await res.json().catch(() => ({ error: "Upload failed" }));
+        console.error("Avatar upload failed:", error);
+        alert("AVATAR_UPLOAD_FAILED: " + (error.error || "Unknown error"));
       }
     } catch (err) {
       console.error("Avatar upload failed:", err);
+      alert("AVATAR_UPLOAD_FAILED: Network error");
     } finally {
       setUploadingAvatar(false);
-      // Reset file input
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
@@ -633,7 +626,7 @@ export default function ConfigNecromancer() {
             {!githubConnected && (
               <div className="mt-4 text-[9px] text-ossuary-greyDark">
                 <a 
-                  href="http://localhost:3000/api/connect-github" 
+                  href="/api/connect-github" 
                   className="text-ossuary-yellow hover:underline"
                 >
                   Connect GitHub

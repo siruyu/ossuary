@@ -10,6 +10,9 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Missing code or state" }, { status: 400 });
   }
   
+  const clientId = process.env.AUTH_GITHUB_ID || "Ov23lil7aQwoM2iP9kZN";
+  const clientSecret = process.env.AUTH_GITHUB_SECRET || "c16fb49fb8d5064016e2ab973fb55e4b84f6ed9c";
+  
   //Exchange code for token .
   const tokenRes = await fetch("https://github.com/login/oauth/access_token", {
     method: "POST",
@@ -18,8 +21,8 @@ export async function GET(request: Request) {
       Accept: "application/json",
     },
     body: JSON.stringify({
-      client_id: "Ov23lil7aQwoM2iP9kZN",
-      client_secret: "c16fb49fb8d5064016e2ab973fb55e4b84f6ed9c",
+      client_id: clientId,
+      client_secret: clientSecret,
       code,
     }),
   });
@@ -27,6 +30,7 @@ export async function GET(request: Request) {
   const tokenData = await tokenRes.json();
   
   if (!tokenData.access_token) {
+    console.error("GitHub token exchange failed:", tokenData);
     return NextResponse.json({ error: "No token" }, { status: 400 });
   }
   

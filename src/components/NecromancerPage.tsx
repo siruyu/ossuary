@@ -138,36 +138,60 @@ export default function NecromancerPage() {
 
   const fetchBurials = useCallback(async (page = 1) => {
     if (!userId) return;
-    const res = await fetch(`/api/burial?userId=${encodeURIComponent(userId)}&page=${page}&limit=10`, { credentials: "include" });
-    if (res.ok) {
-      const data = await res.json();
-      setBuriedNodes(data.burials);
-      setBurialTotalPages(data.totalPages);
-      setBurialPage(data.page);
+    try {
+      const res = await fetch(`/api/burial?userId=${encodeURIComponent(userId)}&page=${page}&limit=10`, { credentials: "include" });
+      if (res.ok) {
+        const data = await res.json();
+        setBuriedNodes(data.burials);
+        setBurialTotalPages(data.totalPages);
+        setBurialPage(data.page);
+      }
+    } catch (err) {
+      console.error("Failed to fetch burials:", err);
     }
   }, [userId]);
 
-   const fetchLootedItems = useCallback(async (page = 1) => {
-     if (!userId) return;
-     const res = await fetch(`/api/loot?userId=${encodeURIComponent(userId)}&page=${page}&limit=20`, { credentials: "include" });
-     if (res.ok) {
-       const data = await res.json();
-       setLootedItems(data.items);
-       setLootTotalPages(data.totalPages);
-       setLootPage(data.page);
-     } else {
-       console.error("Failed to fetch looted items:", res.status, await res.json().catch(() => ({})));
-     }
-   }, [userId]);
+  const fetchLootedItems = useCallback(async (page = 1) => {
+    if (!userId) return;
+    try {
+      const res = await fetch(`/api/loot?page=${page}&limit=20`, { credentials: "include" });
+      if (res.ok) {
+        const data = await res.json();
+        setLootedItems(data.items);
+        setLootTotalPages(data.totalPages);
+        setLootPage(data.page);
+      } else {
+        console.error("Failed to fetch looted items:", res.status);
+      }
+    } catch (err) {
+      console.error("Failed to fetch looted items:", err);
+    }
+  }, [userId]);
 
   const fetchRituals = useCallback(async (page = 1) => {
     if (!userId) return;
-    const res = await fetch(`/api/rituals?userId=${encodeURIComponent(userId)}&page=${page}&limit=10`, { credentials: "include" });
-    if (res.ok) {
-      const data = await res.json();
-      setRituals(data.rituals);
-      setRitualTotalPages(data.totalPages);
-      setRitualPage(data.page);
+    try {
+      const res = await fetch(`/api/rituals?userId=${encodeURIComponent(userId)}&page=${page}&limit=10`, { credentials: "include" });
+      if (res.ok) {
+        const data = await res.json();
+        setRituals(data.rituals);
+        setRitualTotalPages(data.totalPages);
+        setRitualPage(data.page);
+      }
+    } catch (err) {
+      console.error("Failed to fetch rituals:", err);
+    }
+  }, [userId]);
+
+  const refreshProfile = useCallback(async () => {
+    if (!userId) return;
+    try {
+      const res = await fetch(`/api/profile?userId=${encodeURIComponent(userId)}`, { credentials: "include" });
+      if (res.ok) {
+        setProfile(await res.json());
+      }
+    } catch (err) {
+      console.error("Failed to refresh profile:", err);
     }
   }, [userId]);
 
@@ -180,23 +204,16 @@ export default function NecromancerPage() {
         body: JSON.stringify({ userId, projectId }),
       });
       if (res.ok) {
-        // Immediately remove from UI
         setBuriedNodes((prev) => prev.filter((n) => n.id !== projectId));
-        // Refresh from server to ensure consistency
-        fetchBurials(1);
-        // Refresh rituals too
-        fetchRituals(1);
-        // Refresh profile to update totalBuried count
-        const profileRes = await fetch(`/api/profile?userId=${encodeURIComponent(userId)}`);
-        if (profileRes.ok) setProfile(await profileRes.json());
+        await Promise.all([fetchBurials(1), fetchRituals(1), refreshProfile()]);
       } else {
         const err = await res.json();
         alert("EXHUME_FAILED: " + (err.error || "Unknown error"));
       }
-} catch {
-        alert("EXHUME_FAILED: Network error");
+    } catch {
+      alert("EXHUME_FAILED: Network error");
     }
-  }, [userId, fetchBurials, fetchRituals]);
+  }, [userId, fetchBurials, fetchRituals, refreshProfile]);
 
   const deleteRitual = useCallback(async (ritualId: string) => {
     if (!userId || !confirm("SEVER THIS RITUAL? THIS CANNOT BE UNDONE.")) return;
@@ -208,19 +225,15 @@ export default function NecromancerPage() {
       });
       if (res.ok) {
         setRituals((prev) => prev.filter((r) => r.id !== ritualId));
-        // Also refresh the graveyard to reflect the deleted burial
-        fetchBurials(1);
-        // Refresh profile to update totalBuried count
-        const profileRes = await fetch(`/api/profile?userId=${encodeURIComponent(userId)}`);
-        if (profileRes.ok) setProfile(await profileRes.json());
+        await Promise.all([fetchBurials(1), refreshProfile()]);
       } else {
         const err = await res.json();
         alert("SEVER_FAILED: " + (err.error || "Unknown error"));
       }
-} catch {
+    } catch {
       alert("SEVER_FAILED: Network error");
     }
-  }, [userId, fetchBurials]);
+  }, [userId, fetchBurials, refreshProfile]);
 
   useEffect(() => {
     if (!loggedIn) return;
@@ -228,18 +241,21 @@ export default function NecromancerPage() {
     let cancelled = false;
     async function fetchData() {
       try {
-        const [profileRes] = await Promise.all([
-          fetch(`/api/profile?userId=${encodeURIComponent(userId!)}`, { credentials: "include" }),
-        ]);
-
+        // Fetch profile first
+        const profileRes = await fetch(`/api/profile?userId=${encodeURIComponent(userId!)}`, { credentials: "include" });
         if (cancelled) return;
-
         if (profileRes.ok) setProfile(await profileRes.json());
         
-        // Fetch first page of all lists
+        // Fetch all lists in parallel
         await Promise.all([fetchBurials(1), fetchLootedItems(1), fetchRituals(1)]);
-      } catch {
-        // Silently fall back to empty state
+        
+        // Refresh profile to ensure lootedResources counter is up to date
+        if (!cancelled) {
+          const profileRes2 = await fetch(`/api/profile?userId=${encodeURIComponent(userId!)}`, { credentials: "include" });
+          if (profileRes2.ok) setProfile(await profileRes2.json());
+        }
+      } catch (err) {
+        console.error("Failed to fetch data:", err);
       }
     }
     fetchData();
